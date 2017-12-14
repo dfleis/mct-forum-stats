@@ -28,9 +28,12 @@ dat$day <- format(dat$date, '%d')
 dat$time <- strftime(dat$date_time, format = "%H:%M")
 dat$hr <- as.POSIXlt(dat$date_time)$hour
 dat$min <- as.POSIXlt(dat$date_time)$min
+dat$sec <- lubridate::second(dat$date_time)
 
+#~~~~~~ DOESN'T WORK?~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # sort posts by date
 dat <- ddply(dat,.(Name),function(df) {df[order(df$Time),]} )
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # get weekday and hour of day of each post
 dat$weekday_hr <- paste(dat$weekday, dat$hr,sep = " ")
@@ -387,9 +390,79 @@ for (i in 2:length(top_n)) {
 abline(h = 2000, lty = 3, lwd = 3)
 
 
+##### TESTS #####
+# sort data by date
+dat_s <- dat[order(dat$date_time),]
+
+idx <- 1:length(dat_s$date_time)
+plot(idx~dat_s$date_time[idx], pch = 19, cex = 0.25)
+
+p <- barplot(table(dat_s$sec), xaxt = "n")
+axis(1, at = p, labels = names(table(dat_s$sec)))
+p <- barplot(table(dat_s$min), xaxt = "n")
+axis(1, at = p, labels = names(table(dat_s$min)))
+barplot(table(dat_s$hr))
+barplot(table(dat_s$weekday))
+barplot(table(paste(dat_s$weekday, dat_s$hr)))
+barplot(table(paste(dat_s$weekday, " ", dat_s$hr, ":", dat_s$min)))
+p <- barplot(table(paste(dat_s$hr, dat_s$min, sep = ":")), xaxt = "n")
+axis(1, at = p, labels = names(table(paste(dat_s$hr, dat_s$min, sep = ":"))))
+barplot(table(paste(dat_s$min, dat_s$sec, sep = ":")))
+barplot(table(paste(dat_s$month, dat$weekday)))
+
+barplot(table(paste(dat_s$month, dat$weekday, dat$hr)))
 
 
 
+
+
+
+
+
+
+
+dat_tmp <- as.data.frame(table(dat_s$weekday,dat_s$month,year(dat_s$date)))
+names(dat_tmp) <- c("weekday","month","year","Freq")
+
+ggplot(dat_tmp, aes(x = month, y = weekday, fill = Freq)) +
+  geom_tile() +
+  facet_wrap( ~ year, ncol = 3) +
+  xlab("Month") + 
+  ylab("Weekday") + 
+  scale_fill_gradientn("Total\nForum\nPosts",
+                       limits = c(0, max(dat_tmp$Freq)),
+                       colours = c("darkblue","cyan3","yellow","orange")) +
+  theme_bw() +
+  theme(axis.text.x      = element_text(size = 8), 
+        axis.text.y      = element_text(size = 6),
+        panel.border     = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        legend.key       = element_blank(),
+        axis.ticks       = element_blank(),
+        strip.background = element_blank())
+
+dat_tmp <- as.data.frame(table(dat_s$hr, dat_s$weekday,dat_s$month,year(dat_s$date)))
+names(dat_tmp) <- c("hour", "weekday","month","year","Freq")
+dat_tmp$Freq <- log10(dat_tmp$Freq + 1)
+
+ggplot(dat_tmp, aes(x = weekday, y = hour, fill = Freq)) +
+  geom_tile() +
+  facet_grid(month ~ year) +
+  xlab("Weekday") + 
+  ylab("Hour") + 
+  scale_fill_gradientn("Log10(Total\nForum\nPosts + 1)",
+                       limits = c(0, max(dat_tmp$Freq)),
+                       colours = c("darkblue","cyan3","yellow","orange")) +
+  theme_bw() +
+  theme(axis.text.x      = element_text(size = 8), 
+        axis.text.y      = element_text(size = 6),
+        panel.border     = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        legend.key       = element_blank(),
+        axis.ticks       = element_blank(),
+        strip.background = element_blank())
 
 
 
