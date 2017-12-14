@@ -7,8 +7,7 @@ library(reshape2)
 
 ##=== load data ===##
 
-#setwd("D:/Dropbox/r/mct/plots")
-setwd("~/projects/mct_forum_posts/plots")
+setwd("~/projects/mct-forum-stats/")
 
 url <- "http://files.j-vk.com/timestamps.dat"
 dat <- read.csv(url)
@@ -62,20 +61,23 @@ weekly_posts$dist <- weekly_posts$Freq / sum(weekly_posts$Freq)
 lvls <- levels(weekly_posts$weekday_hr)
 
 my_theme <- theme_bw() +
-  theme(axis.text.x=element_text(face="italic"),
-        axis.text.y=element_blank(),
-        panel.border=element_blank(),
-        panel.grid.minor=element_blank(),
-        panel.grid.major.y=element_blank(),
-        panel.grid.major.x=element_line(colour="firebrick2"),
-        legend.key=element_blank(),
-        axis.ticks=element_blank(),
-        strip.background=element_blank(),
-        plot.title=element_text(lineheight=.8, face="bold"))
+  theme(axis.text.x        = element_text(face = "italic"),
+        axis.text.y        = element_blank(),
+        panel.border       = element_blank(),
+        panel.grid.minor   = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.major.x = element_line(colour = "firebrick2"),
+        legend.key         = element_blank(),
+        axis.ticks         = element_blank(),
+        strip.background   = element_blank(),
+        plot.title         = element_text(lineheight = 0.8, face = "bold"))
 
 ### Create animated plot
 for (i in 1:length(lvls)) {
-  png(filename = paste(sprintf("%04d",i), ".png", sep = ""),
+  if (i %% 10 == 0)
+    print(i)
+  
+  png(filename = paste("./img/tmp/", sprintf("%04d",i), ".png", sep = ""),
       width = 1000, height = 400)
   print (
     
@@ -93,9 +95,13 @@ for (i in 1:length(lvls)) {
   )
 dev.off()
 }
+
 ### repeat last frame
 for (i in 1:300) {
-  png(filename = paste(sprintf("%04d", i + length(lvls)), ".png", sep = ""),
+  if (i %% 10 == 0)
+    print(i)
+  
+  png(filename = paste("./img/tmp/", sprintf("%04d", i + length(lvls)), ".png", sep = ""),
       width = 1000, height = 400)
   print (
     
@@ -113,13 +119,29 @@ for (i in 1:300) {
   )
   dev.off()
 }
-### Stick together into a gif
-#shell("\"C:\\Program Files\\ImageMagick\\convert.exe\" *.png -delay 3 -loop 0 mct_posts_weekd.gif")
-#shell("\"C:\\Program Files\\ImageMagick\\convert.exe\" -delay 3 mct_posts_weekdayhr.gif mct_week.gif")
 
-# doesn't work? I've yet to find a solution while on a mac
-system("convert *.png -delay 3 -loop 0 mct_posts_week.gif")
-#file.remove(list.files(pattern = ".png"))
+### save one copy of the last frame ###
+pdf(file = paste0("./img/intraweek.pdf"), width = 7, height = 3.5)
+print (
+  
+  ggplot(weekly_posts[weekly_posts$weekday_hr %in% lvls[1:length(lvls)],],
+         aes(x = weekday_hr, y = dist)) +
+    labs(title = "Aggregated Forum Activity of McGill Cycling from 2006-present",
+         y = "Proportion of Activity",
+         x = "Time") + 
+    geom_line(aes(group = g)) +
+    scale_x_discrete(breaks = paste(levels(unique(dat$weekday)), 0),
+                     labels = levels(unique(dat$weekday)),
+                     limits = lvls) +
+    scale_y_continuous(limits = c(0, max(weekly_posts$dist))) +
+    my_theme
+)
+dev.off()
+
+### Stick together into an obnoxious gif
+system("convert ./img/tmp/*.png -delay 3 -loop 0 ./gif/intraweek.gif")
+file.remove(paste0("./img/tmp/", list.files(path = "./img/tmp/", pattern = ".png")))
+
 
 
 
@@ -146,26 +168,28 @@ intraday <- ddply(intraday, .(name), function(df) {
 names(intraday) <- c("name",0:23)
 
 # reshape to long format for plotting
-intraday2 <- melt(tmp)
+intraday2 <- melt(intraday)
 names(intraday2) <- c("name","hr","dist")
 # restructure usernames as factors
 intraday$name <- factor(intraday$name, levels = postcount$Var1)
 
 ## FINALLY! Lets plot
+pdf(file = "./img/intraday.pdf", height = 5, width = 5.5)
 ggplot(intraday2[intraday2$name %in% top_n,], aes(x = hr,y = dist)) +
   labs(x = "Time of Day",y = "Post Distribution") + 
   geom_line(aes(group = 1)) +
   facet_wrap(~ name) +
   theme_bw() +
-  theme(axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
-        panel.border = element_blank(),
+  theme(strip.text       = element_text(size = 6),
+        axis.text.x      = element_blank(),
+        axis.text.y      = element_blank(),
+        panel.border     = element_blank(),
         panel.grid.minor = element_blank(),
         panel.grid.major = element_blank(),
-        legend.position = "none",
-        axis.ticks = element_blank(),
+        legend.position  = "none",
+        axis.ticks       = element_blank(),
         strip.background = element_blank())
-
+dev.off()
 
 
 ##=== posts by month/day/hour of the day ===##
@@ -174,39 +198,48 @@ ggplot(intraday2[intraday2$name %in% top_n,], aes(x = hr,y = dist)) +
 dat_c <- as.data.frame(table(dat$hr,dat$day,dat$month))
 names(dat_c) <- c("hr","day","month","Freq")
 
+pdf(file = "./img/daily.pdf", height = 6, width = 7)
 ggplot(dat_c, aes(x = day, y = as.factor(hr), fill = Freq)) +
   geom_tile() +
   facet_wrap( ~ month, ncol = 3) +
+  xlab("Day") + 
+  ylab("Hour") +
   scale_fill_gradientn("Total\nForum\nPosts",
                        limits = c(0, max(dat_c$Freq)),
                        colours = c("darkblue","cyan3","yellow","orange")) +
   theme_bw() +
-  theme(panel.border = element_blank(),
+  theme(axis.text        = element_text(size = 4), 
+        panel.border     = element_blank(),
         panel.grid.minor = element_blank(),
         panel.grid.major = element_blank(),
-        legend.key = element_blank(),
-        axis.ticks = element_blank(),
+        legend.key       = element_blank(),
+        axis.ticks       = element_blank(),
         strip.background = element_blank())
-
+dev.off()
 
 # by weekday name
 dat_c <- as.data.frame(table(dat$hr,dat$weekday,dat$month))
 names(dat_c) <- c("hr","weekday","month","Freq")
 
+pdf(file = "./img/weekdaily.pdf", height = 6, width = 7)
 ggplot(dat_c, aes(x = weekday, y = as.factor(hr), fill = Freq)) +
   geom_tile() +
   facet_wrap( ~ month, ncol = 3) +
+  xlab("Weekday") + 
+  ylab("Hour") + 
   scale_fill_gradientn("Total\nForum\nPosts",
                        limits = c(0, max(dat_c$Freq)),
                        colours = c("darkblue","cyan3","yellow","orange")) +
   theme_bw() +
-  theme(panel.border = element_blank(),
+  theme(axis.text.x      = element_text(size = 6), 
+        axis.text.y      = element_text(size = 4),
+        panel.border     = element_blank(),
         panel.grid.minor = element_blank(),
         panel.grid.major = element_blank(),
-        legend.key = element_blank(),
-        axis.ticks = element_blank(),
+        legend.key       = element_blank(),
+        axis.ticks       = element_blank(),
         strip.background = element_blank())
-
+dev.off()
 
 
 
@@ -241,7 +274,7 @@ for (i in 2:length(top_n)) {
 abline(h = 2000, lty = 3, lwd = 3)
 
 
-str(tmp2$Freq[tmp2$Name %in% top_n])
+
 
 
 
