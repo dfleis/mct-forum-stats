@@ -1,3 +1,7 @@
+##
+## Descriptive stats from the McGill Cycling community forum
+##
+
 ##=== load some libraries ===##
 
 library(plyr)
@@ -170,17 +174,18 @@ names(intraday) <- c("name",0:23)
 # reshape to long format for plotting
 intraday2 <- melt(intraday)
 names(intraday2) <- c("name","hr","dist")
+
 # restructure usernames as factors
 intraday$name <- factor(intraday$name, levels = postcount$Var1)
 
 ## FINALLY! Lets plot
-pdf(file = "./img/intraday.pdf", height = 5, width = 5.5)
+pdf(file = "./img/intraday.pdf", height = 6, width = 7)
 ggplot(intraday2[intraday2$name %in% top_n,], aes(x = hr,y = dist)) +
   labs(x = "Time of Day",y = "Post Distribution") + 
   geom_line(aes(group = 1)) +
   facet_wrap(~ name) +
   theme_bw() +
-  theme(strip.text       = element_text(size = 6),
+  theme(strip.text       = element_text(size = 9),
         axis.text.x      = element_blank(),
         axis.text.y      = element_blank(),
         panel.border     = element_blank(),
@@ -198,7 +203,7 @@ dev.off()
 dat_c <- as.data.frame(table(dat$hr,dat$day,dat$month))
 names(dat_c) <- c("hr","day","month","Freq")
 
-pdf(file = "./img/daily.pdf", height = 6, width = 7)
+pdf(file = "./img/daily.pdf", height = 7, width = 7)
 ggplot(dat_c, aes(x = day, y = as.factor(hr), fill = Freq)) +
   geom_tile() +
   facet_wrap( ~ month, ncol = 3) +
@@ -221,7 +226,7 @@ dev.off()
 dat_c <- as.data.frame(table(dat$hr,dat$weekday,dat$month))
 names(dat_c) <- c("hr","weekday","month","Freq")
 
-pdf(file = "./img/weekdaily.pdf", height = 6, width = 7)
+pdf(file = "./img/weekdaily.pdf", height = 7, width = 6)
 ggplot(dat_c, aes(x = weekday, y = as.factor(hr), fill = Freq)) +
   geom_tile() +
   facet_wrap( ~ month, ncol = 3) +
@@ -247,12 +252,14 @@ dev.off()
 
 
 plot(table(dat$date))
+plot(table(dat$month))
+plot(table(format(dat$date, "%Y-%m")))
 
 
 ## cumsum post count
 pst_cnt <- table(dat$Name)
 srtd_pst_cnt <- pst_cnt[order(-pst_cnt)]
-top_n <- names(srtd_pst_cnt[1:6])
+top_n <- names(srtd_pst_cnt[1:8])
 
 all_posts <- as.data.frame(table(dat$date, dat$Name))
 names(all_posts) <- c("date", "name", "freq")
@@ -266,7 +273,7 @@ plot(cumsum(top_users$freq[top_users$name == top_n[1]]),
      ylab = "Cumulative Posts", ylim = c(0,2250))
 
 legend("topleft", lty = 1, legend = top_n, col = cols, 
-       bty = "n", seg.len = 1/2)
+       bty = "n", seg.len = 1/2, lwd = 2)
 for (i in 2:length(top_n)) {
   lines(cumsum(top_users$freq[top_users$name == top_n[i]]),
         type = "l", lwd = 3, col = cols[i])
